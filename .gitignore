@@ -154,3 +154,10 @@ cython_debug/
 .vscode/*
 ./utils/.ipynb_checkpoints/*
 InputArray.desktop
+
+# images
+00000/*
+00001/*
+00002/*
+00003/*
+00004/*
