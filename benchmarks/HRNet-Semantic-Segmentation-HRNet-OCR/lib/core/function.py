@@ -347,6 +347,9 @@ def test_on_video(config, test_dataset, model, camera_device, viz, id_color_map)
         ret, frame = vidcap.read()
         if ret:
             image = frame[::]
+            new_h, new_w = (1440, 1920)
+            image = cv2.resize(image, (new_w, new_h),
+                        interpolation=cv2.INTER_LINEAR)
             image = test_dataset.input_transform(image)
             image_name = str(camera_device) + "_image" + str(count) + '.jpg'
             image = image.transpose((2, 0, 1))
