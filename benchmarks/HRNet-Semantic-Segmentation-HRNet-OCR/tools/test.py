@@ -27,7 +27,7 @@ import models
 import datasets
 from config import config
 from config import update_config
-from core.function import testval, test
+from core.function import testval, test, test_on_video
 from utils.modelsummary import get_model_summary
 from utils.utils import create_logger, FullModel
 
@@ -48,6 +48,10 @@ def parse_args():
                         help="Modify config options using the command-line",
                         default=None,
                         nargs=argparse.REMAINDER)
+    parser.add_argument('--viz', dest='viz',
+                        help="Visualize predictions when saving",
+                        action='store_true')
+    parser.add_argument('--camera_device', type=int, default=None, help="If wanting to test on a webcam, enter the device number here.")
     args = parser.parse_args()
     update_config(config, args)
 
@@ -132,6 +136,13 @@ def main():
 
     id_color_map = CFG["color_map"]
     start = timeit.default_timer()
+
+    if args.camera_device:
+        test_on_video(config, model, viz=args.viz, id_color_map=id_color_map)
+        end = timeit.default_timer()
+        logger.info('Mins: %d' % int((end-start)/60))
+        logger.info('Done')
+
     if 'val' in config.DATASET.TEST_SET:
         mean_IoU, IoU_array, pixel_acc, mean_acc = testval(config, 
                                                            test_dataset, 
@@ -139,13 +150,15 @@ def main():
                                                            model,
                                                            sv_dir='test_output',
                                                            sv_pred=args.save,
-                                                           id_color_map = id_color_map)
+                                                           id_color_map = id_color_map,
+                                                           viz=args.viz)
     
         msg = 'MeanIU: {: 4.4f}, Pixel_Acc: {: 4.4f}, \
             Mean_Acc: {: 4.4f}, Class IoU: '.format(mean_IoU, 
             pixel_acc, mean_acc)
         logging.info(msg)
         logging.info(IoU_array)
+    
     elif 'test' in config.DATASET.TEST_SET:
         test(config, 
              test_dataset, 
@@ -153,10 +166,11 @@ def main():
              model,
              sv_dir=final_output_dir,
              sv_pred=args.save,
-             id_color_map = id_color_map)
+             id_color_map = id_color_map,
+             viz=args.viz)
 
     end = timeit.default_timer()
-    logger.info('Mins: %d' % np.int((end-start)/60))
+    logger.info('Mins: %d' % int((end-start)/60))
     logger.info('Done')
 
 

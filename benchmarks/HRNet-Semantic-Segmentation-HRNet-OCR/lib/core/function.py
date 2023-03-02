@@ -23,6 +23,7 @@ from utils.utils import adjust_learning_rate
 import utils.distributed as dist
 from PIL import Image
 
+import cv2
 
 def convert_label(label, inverse=False):
     label_mapping = {0: 0,
@@ -48,7 +49,12 @@ def convert_label(label, inverse=False):
                     #  32: 4,
                      33: 17,
                      34: 18}
-    temp = label.copy()
+    
+    if label.dtype == torch.float32:
+        temp = label.clone()
+    else:
+        temp = label.copy()
+    
     if inverse:
         for v,k in label_mapping.items():
             temp[label == k] = v
@@ -310,3 +316,64 @@ def test(config, test_dataset, testloader, model,
             #     if not os.path.exists(sv_path):
             #         os.mkdir(sv_path)
             #     test_dataset.save_pred(pred, sv_path, name)
+
+def test_on_video(config, model, camera_device, viz, id_color_map):
+    model.eval()
+    vidcap = cv2.VideoCapture(int(camera_device))
+    vidcap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    if not (vidcap.isOpened()):
+        print('could not open video device')
+        exit()
+    count = 0
+    cam = True
+    while(cam):
+        count +=1
+        ret, frame = vidcap.read()
+        if ret:
+            image = frame[:,:,::-1]
+            image_name = str(camera_device) + "_image" + str(count) + '.jpg'
+            # could save here if I wanted with the prediction / save directory
+    
+            with torch.no_grad():
+                image, size, name = image, image.shape, image_name
+                size = size[0]
+                pred = model(image)
+                pred = pred[config.TEST.OUTPUT_INDEX]
+                pred_np = pred.cpu().numpy()
+                b,_,_,_ = pred.shape
+                for i in range(b):
+                    sv_path = os.path.join(config.OUTPUT_DIR, 'hrnet',name[i][:5],'pylon_camera_node_label_id')
+                    if not os.path.exists(sv_path):
+                        os.makedirs(sv_path)
+                    _, file_name = os.path.split(name[i])
+                    file_name = file_name.replace("jpg","png")
+                    data_path = os.path.join(sv_path,file_name)
+                    pred_arg = np.argmax(pred_np[i],axis=0).astype(np.uint8)
+                    pred_arg = convert_label(pred_arg, True)
+                    pred_img = np.stack((pred_arg,pred_arg,pred_arg),axis=2)
+                    pred_img = Image.fromarray(pred_img)
+                    pred_img.save(data_path)
+                    if viz:
+                        sv_path = os.path.join(config.OUTPUT_DIR, 'hrnet',name[i][:5],'pylon_camera_node_label_color')
+                        if not os.path.exists(sv_path):
+                            os.makedirs(sv_path)
+                        _, file_name = os.path.split(name[i])
+                        file_name = file_name.replace("jpg","png")
+                        color_path = os.path.join(sv_path,file_name)
+                        color_label = convert_color(pred_arg, id_color_map)
+                        # pred_arg_flat = np.ravel(pred_arg)
+                        # print(pred_arg)
+                        # color_arg = np.array([id_color_map.get(i,(i,i,i)) for i in pred_arg_flat]).astype(np.uint8)
+                        # pred_arg_back = np.reshape(color_arg, (pred_arg.shape[0],pred_arg.shape[1],-1))
+                        # print(pred_arg_back)
+                        # print(pred_arg_back[:,:,0])
+                        # color_img = Image.fromarray(np.reshape(color_arg,(pred_arg.shape[0],pred_arg.shape[1],-1)))
+                        color_img = Image.fromarray(color_label,'RGB')
+                        color_img.save(color_path)
+                        cv2.imshow('frame', color_img)
+                        cv2.imshow('orig', frame)
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            cam = False
+    vidcap.release()
+    cv2.destroyAllWindows()
+
