@@ -137,8 +137,8 @@ def main():
     id_color_map = CFG["color_map"]
     start = timeit.default_timer()
 
-    if args.camera_device:
-        test_on_video(config, model, viz=args.viz, id_color_map=id_color_map)
+    if type(args.camera_device) == int:
+        test_on_video(config, test_dataset, model, camera_device=0, viz=args.viz, id_color_map=id_color_map)
         end = timeit.default_timer()
         logger.info('Mins: %d' % int((end-start)/60))
         logger.info('Done')
