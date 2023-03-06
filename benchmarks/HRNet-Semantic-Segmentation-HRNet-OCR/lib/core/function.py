@@ -202,7 +202,7 @@ def validate(config, testloader, model, writer_dict):
 
 
 def testval(config, test_dataset, testloader, model,
-            sv_dir='', sv_pred=False, viz=True, id_color_map={}):
+            sv_dir='', sv_pred=False, viz=True, id_color_map={}, multi_scale=True):
     model.eval()
     confusion_matrix = np.zeros(
         (config.DATASET.NUM_CLASSES, config.DATASET.NUM_CLASSES))
@@ -210,13 +210,19 @@ def testval(config, test_dataset, testloader, model,
         for index, batch in enumerate(tqdm(testloader)):
             image, label, _, name, *border_padding = batch
             size = label.size()
-            pred = test_dataset.multi_scale_inference(
-                config,
-                model,
-                image,
-                scales=config.TEST.SCALE_LIST,
-                flip=config.TEST.FLIP_TEST)
-            pred = convert_label(pred, True)
+            # single scale inference
+            if not multi_scale:
+                pred = model(image)
+                pred = pred[config.TEST.OUTPUT_INDEX]
+            # multi-scale inference
+            elif multi_scale:
+                pred = test_dataset.multi_scale_inference(
+                    config,
+                    model,
+                    image,
+                    scales=config.TEST.SCALE_LIST,
+                    flip=config.TEST.FLIP_TEST)
+                pred = convert_label(pred, True)
             if len(border_padding) > 0:
                 border_padding = border_padding[0]
                 pred = pred[:, :, 0:pred.size(2) - border_padding[0], 0:pred.size(3) - border_padding[1]]
@@ -261,14 +267,23 @@ def testval(config, test_dataset, testloader, model,
 
 
 def test(config, test_dataset, testloader, model,
-         sv_dir='', sv_pred=True, viz=True, id_color_map={}):
+         sv_dir='', sv_pred=True, viz=True, id_color_map={}, multi_scale=True):
     model.eval()
     with torch.no_grad():
         for _, batch in enumerate(tqdm(testloader)):
             image, size, name = batch
             size = size[0]
-            pred = model(image)
-            pred = pred[config.TEST.OUTPUT_INDEX]
+            if not multi_scale:
+                pred = model(image)
+                pred = pred[config.TEST.OUTPUT_INDEX]
+            elif multi_scale:
+                pred = test_dataset.multi_scale_inference(
+                    config,
+                    model,
+                    image,
+                    scales=config.TEST.SCALE_LIST,
+                    flip=config.TEST.FLIP_TEST)
+                pred = convert_label(pred, True)
             pred_np = pred.cpu().numpy()
             b,_,_,_ = pred.shape
             for i in range(b):
