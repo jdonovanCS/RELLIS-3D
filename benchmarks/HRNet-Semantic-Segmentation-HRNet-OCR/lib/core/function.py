@@ -335,7 +335,7 @@ def test(config, test_dataset, testloader, model,
             #         os.mkdir(sv_path)
             #     test_dataset.save_pred(pred, sv_path, name)
 
-def test_on_video(config, test_dataset, model, camera_device, viz, id_color_map):
+def test_on_video(config, test_dataset, model, camera_device, viz, id_color_map, multi_scale=False):
     # index = 0
     # arr = []
     # while True:
@@ -375,8 +375,17 @@ def test_on_video(config, test_dataset, model, camera_device, viz, id_color_map)
                 image, size, name = image, image.shape, image_name
                 size = size[0]
                 image = torch.from_numpy(np.array(image).copy()).cuda()
-                pred = model(image)
-                pred = pred[config.TEST.OUTPUT_INDEX]
+                if not multi_scale:
+                    pred = model(image)
+                    pred = pred[config.TEST.OUTPUT_INDEX]
+                elif multi_scale:
+                    pred = test_dataset.multi_scale_inference(
+                        config,
+                        model,
+                        image,
+                        scales=config.TEST.SCALE_LIST,
+                        flip=config.TEST.FLIP_TEST)
+                    pred = convert_label(pred, True)
                 pred_np = pred.cpu().numpy()
                 b,_,_,_ = pred.shape
                 for i in range(b):

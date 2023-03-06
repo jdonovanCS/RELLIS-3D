@@ -139,7 +139,7 @@ def main():
     start = timeit.default_timer()
 
     if type(args.camera_device) == int:
-        test_on_video(config, test_dataset, model, camera_device=0, viz=args.viz, id_color_map=id_color_map)
+        test_on_video(config, test_dataset, model, camera_device=0, viz=args.viz, id_color_map=id_color_map, multi_scale=not args.single_scale)
         end = timeit.default_timer()
         logger.info('Mins: %d' % int((end-start)/60))
         logger.info('Done')
