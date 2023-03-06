@@ -52,6 +52,7 @@ def parse_args():
                         help="Visualize predictions when saving",
                         action='store_true')
     parser.add_argument('--camera_device', type=int, default=None, help="If wanting to test on a webcam, enter the device number here.")
+    parser.add_argument('--single_scale', action='store_true', help='Add this if only wanting single scale inference results')
     args = parser.parse_args()
     update_config(config, args)
 
@@ -151,7 +152,8 @@ def main():
                                                            sv_dir='test_output',
                                                            sv_pred=args.save,
                                                            id_color_map = id_color_map,
-                                                           viz=args.viz)
+                                                           viz=args.viz,
+                                                           multi_scale=not args.single_scale)
     
         msg = 'MeanIU: {: 4.4f}, Pixel_Acc: {: 4.4f}, \
             Mean_Acc: {: 4.4f}, Class IoU: '.format(mean_IoU, 
@@ -167,7 +169,8 @@ def main():
              sv_dir=final_output_dir,
              sv_pred=args.save,
              id_color_map = id_color_map,
-             viz=args.viz)
+             viz=args.viz,
+             multi_scale = not args.single_scale)
 
     end = timeit.default_timer()
     logger.info('Mins: %d' % int((end-start)/60))
